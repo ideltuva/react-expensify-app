@@ -3,7 +3,8 @@ import thunk from 'redux-thunk';
 import { 
     startAddExpense, 
     addExpense, 
-    editExpense, 
+    editExpense,
+    startEditExpense, 
     removeExpense,
     startRemoveExpense, 
     setExpenses, 
@@ -61,6 +62,27 @@ test(`should setup edit expense action object`, () => {
     });
 });
 
+test(`should edit expense from firebase`, (done) => {
+    const store = createMockStore({});
+    const id = expenses[1].id;
+    const updates = {
+        description: 'New description in place'
+    };
+
+    store.dispatch(startEditExpense(id, updates)).then(() => {
+        const actions = store.getActions();
+        expect(actions[0]).toEqual({
+            type: 'EDIT_EXPENSE',
+            id,
+            updates
+        });
+        return database.ref(`expenses/${id}`).once('value');
+    }).then((snapshot) => {
+        expect(snapshot.val().description).toEqual(updates.description);
+        done();
+    });
+});
+
 test(`should setup add expense action object with provided values`, () => {
     const action = addExpense(expenses[2]);
     expect(action).toEqual({
@@ -102,7 +124,7 @@ test(`should add expense with defaults to database and store`, () => {
         note: '',
         createdAt: 0
     };
-    store.dispatch(startAddExpense({})).then(() => {
+    store.dispatch(startAddExpense(defaultExpenseData)).then(() => {
         const actions = store.getActions();
         expect(actions[0]).toEqual({
             type: 'ADD_EXPENSE',
@@ -112,9 +134,9 @@ test(`should add expense with defaults to database and store`, () => {
             }
         });
 
-        return database.ref('expenses/${actions[0].expense.id}').once('value');
+        return database.ref(`expenses/${actions[0].expense.id}`).once('value');
     }).then((snapshot) => {
-        expect(snapshot.val()).toEqual(defaultExpenseData);
+        expect(snapshot.val()).toBeFalsy();
         done();
     });
 });
